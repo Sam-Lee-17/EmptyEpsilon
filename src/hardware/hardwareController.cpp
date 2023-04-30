@@ -10,6 +10,7 @@
 #include "devices/enttecDMXProDevice.h"
 #include "devices/virtualOutputDevice.h"
 #include "devices/sACNDMXDevice.h"
+#include "devices/OSCDevice.h"
 #include "devices/uDMXDevice.h"
 #include "devices/philipsHueDevice.h"
 
@@ -95,6 +96,8 @@ void HardwareController::handleConfig(string section, std::unordered_map<string,
             device = new VirtualOutputDevice();
         else if (settings["device"] == "sACNDevice")
             device = new StreamingAcnDMXDevice();
+        else if (settings["device"] == "OSCDevice")
+            device = new OSCDevice();
         else if (settings["device"] == "uDMXDevice")
             device = new UDMXDevice();
         else if (settings["device"] == "PhilipsHueDevice")

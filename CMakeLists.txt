@@ -139,6 +139,39 @@ if(NOT meshoptimizer_POPULATED)
   add_subdirectory(${meshoptimizer_SOURCE_DIR} ${meshoptimizer_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# oscpp
+set(OSCPP_GIT_SHA 805365c3b7b7a5c819866040ab434f011dfcfbf9) # master branch as of 2023-04-30
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
+  include(FetchContent)
+  FetchContent_Declare(
+    oscpp
+    GIT_REPOSITORY https://github.com/kaoskorobase/oscpp/
+    GIT_TAG "${OSCPP_GIT_SHA}" 
+  )
+  FetchContent_GetProperties(oscpp)
+else()
+  # Poor man's FetchContent.
+  set(OSCPP_BASE_PATH "${EXTERNALS_DIR}")
+  set(oscpp_POPULATED FALSE)
+  if(NOT EXISTS "${OSCPP_BASE_PATH}/oscpp/CMakeLists.txt")
+    set(OSCPP_ZIP "${DOWNLOADS_DIR}/oscpp.zip")
+    file(DOWNLOAD "https://github.com/kaoskorobase/oscpp/archive/${OSCPP_GIT_SHA}.zip" "${OSCPP_ZIP}" TIMEOUT 60 TLS_VERIFY ON)
+
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf "${OSCPP_ZIP}" WORKING_DIRECTORY "${OSCPP_BASE_PATH}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rename "oscpp-${OSCPP_GIT_SHA}" oscpp WORKING_DIRECTORY "${OSCPP_BASE_PATH}")
+  endif()
+
+  set(oscpp_SOURCE_DIR "${OSCPP_BASE_PATH}/oscpp")
+  
+endif()
+
+if(NOT oscpp_POPULATED)
+  if(COMMAND FetchContent_Populate)
+    FetchContent_Populate(oscpp)
+  endif()
+  include_directories(${oscpp_SOURCE_DIR}/include)
+endif()
+
 set(GUI_LIB_SOURCES
     src/gui/colorConfig.cpp
     src/gui/hotkeyBinder.cpp
@@ -364,6 +397,7 @@ set(MAIN_SOURCES
     src/hardware/devices/dmx512SerialDevice.cpp
     src/hardware/devices/enttecDMXProDevice.cpp
     src/hardware/devices/sACNDMXDevice.cpp
+    src/hardware/devices/OSCDevice.cpp
     src/hardware/devices/uDMXDevice.cpp
     src/hardware/devices/virtualOutputDevice.cpp
     src/hardware/devices/philipsHueDevice.cpp
@@ -388,6 +422,7 @@ set(MAIN_SOURCES
     src/hardware/devices/enttecDMXProDevice.h
     src/hardware/devices/philipsHueDevice.h
     src/hardware/devices/sACNDMXDevice.h
+    src/hardware/devices/OSCDevice.h
     src/hardware/devices/uDMXDevice.h
     src/hardware/devices/virtualOutputDevice.h
     src/hardware/hardwareController.h
