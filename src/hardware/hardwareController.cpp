@@ -137,6 +137,11 @@ void HardwareController::handleConfig(string section, std::unordered_map<string,
         }
     }else if(section == "[state]")
     {
+        int ship_number = 0;
+        if (channel_mapping.find(settings["ship_number"]) != channel_mapping.end())
+        {
+            ship_number = settings["ship_number"].strip().toInt();
+        }
         if (channel_mapping.find(settings["target"]) == channel_mapping.end())
         {
             LOG(ERROR) << "Unknown target channel in hardware.ini: " << settings["target"];
@@ -150,11 +155,16 @@ void HardwareController::handleConfig(string section, std::unordered_map<string,
                     std::vector<string> values = item.second.split(",");
                     per_channel_settings[item.first] = values[idx % values.size()].strip();
                 }
-                createNewHardwareMappingState(channel_numbers[idx], per_channel_settings);
+                createNewHardwareMappingState(ship_number, channel_numbers[idx], per_channel_settings);
             }
         }
     }else if(section == "[event]")
     {
+        int ship_number = 0;
+        if (channel_mapping.find(settings["ship_number"]) != channel_mapping.end())
+        {
+            ship_number = settings["ship_number"].strip().toInt();
+        }
         if (channel_mapping.find(settings["target"]) == channel_mapping.end())
         {
             LOG(ERROR) << "Unknown target channel in hardware.ini: " << settings["target"];
@@ -168,7 +178,7 @@ void HardwareController::handleConfig(string section, std::unordered_map<string,
                     std::vector<string> values = item.second.split(",");
                     per_channel_settings[item.first] = values[idx % values.size()];
                 }
-                createNewHardwareMappingEvent(channel_numbers[idx], per_channel_settings);
+                createNewHardwareMappingEvent(ship_number, channel_numbers[idx], per_channel_settings);
             }
         }
     }else{
@@ -186,7 +196,7 @@ void HardwareController::update(float delta)
     {
         float value;
         bool active = false;
-        if (getVariableValue(state.variable, value))
+        if (getVariableValue(state.ship_number, state.variable, value))
         {
             switch(state.compare_operator)
             {
@@ -208,7 +218,7 @@ void HardwareController::update(float delta)
     {
         float value;
         bool trigger = false;
-        if (getVariableValue(event.trigger_variable, value))
+        if (getVariableValue(event.ship_number, event.trigger_variable, value))
         {
             if (event.previous_valid)
             {
@@ -254,7 +264,7 @@ void HardwareController::update(float delta)
     }
 }
 
-void HardwareController::createNewHardwareMappingState(int channel_number, std::unordered_map<string, string>& settings)
+void HardwareController::createNewHardwareMappingState(int ship_number, int channel_number, std::unordered_map<string, string>& settings)
 {
     string condition = settings["condition"];
 
@@ -263,6 +273,7 @@ void HardwareController::createNewHardwareMappingState(int channel_number, std::
     state.compare_operator = HardwareMappingState::Greater;
     state.compare_value = 0.0;
     state.channel_nr = channel_number;
+    state.ship_number = ship_number;
 
     for(HardwareMappingState::EOperator compare_operator : {HardwareMappingState::Less, HardwareMappingState::Greater, HardwareMappingState::Equal, HardwareMappingState::NotEqual})
     {
@@ -291,7 +302,7 @@ void HardwareController::createNewHardwareMappingState(int channel_number, std::
     }
 }
 
-void HardwareController::createNewHardwareMappingEvent(int channel_number, std::unordered_map<string, string>& settings)
+void HardwareController::createNewHardwareMappingEvent(int ship_number, int channel_number, std::unordered_map<string, string>& settings)
 {
     string trigger = settings["trigger"];
 
@@ -311,6 +322,7 @@ void HardwareController::createNewHardwareMappingEvent(int channel_number, std::
     event.channel_nr = channel_number;
     event.runtime = settings["runtime"].toFloat();
     event.previous_value = 0.0;
+    event.ship_number = ship_number;
 
     event.effect = createEffect(settings);
     if (event.effect)
@@ -342,11 +354,13 @@ HardwareMappingEffect* HardwareController::createEffect(std::unordered_map<strin
 }
 
 #define SHIP_VARIABLE(name, formula) if (variable_name == name) { if (ship) { value = (formula); return true; } return false; }
-bool HardwareController::getVariableValue(string variable_name, float& value)
+bool HardwareController::getVariableValue(int ship_number, string variable_name, float& value)
 {
     P<PlayerSpaceship> ship = my_spaceship;
     if (!ship && gameGlobalInfo)
         ship = gameGlobalInfo->getPlayerShip(0);
+    if (ship_number > 0 && gameGlobalInfo)
+        ship = gameGlobalInfo->getPlayerShip(ship_number);
 
     if (variable_name == "Always")
     {
