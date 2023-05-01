@@ -8,92 +8,60 @@
 
 OSCDevice::OSCDevice()
 {
-    run_thread = false;
-}
-
-OSCDevice::~OSCDevice()
-{
-    if (run_thread)
-    {
-        run_thread = false;
-        update_thread.join();
+    channel_count = 512;
+    address = sp::io::network::Address("127.0.0.1");
+    port_number = 53000;
+    for (int i = 0; i < 512; i++) {
+        osc_addresses[i] = "/emptyepsilon/channel/" + std::to_string(i);
     }
+    socket.bind(0); // Bind to random port
 }
 
 bool OSCDevice::configure(std::unordered_map<string, string> settings)
 {
-    // TODO: This is where we bring in the IP address
-    // TODO: This is where we bring in the port number
-    // TODO: This is where we bring in the choice of TCP / UDP
-    // TODO: This is where we bring in the OSC address prefix, e.g. /COGS/something/whatever
-
-    if (settings.find("name-of-setting") != settings.end())
+    if (settings.find("channels") != settings.end())
     {
-        // Add settings processing in here
+        channel_count = std::max(1, std::min(512, settings["channels"].toInt()));
     }
-    
-    run_thread = true;
-    update_thread = std::thread(&OSCDevice::updateLoop, this);
+    if (settings.find("server_address") != settings.end())
+    {
+        address = sp::io::network::Address(settings["server_address"]);
+    }
+    if (settings.find("port_number") != settings.end())
+    {
+        port_number = settings["port_number"].toInt();
+    }
+    if (settings.find("address_prefix") != settings.end())
+    {
+        for (int i = 0; i < 512; i++) {
+            osc_addresses[i] = settings["address_prefix"].strip() + std::to_string(i);
+        }
+    }
+    if (settings.find("channel_addresses") != settings.end())
+    {
+        int i = 0;
+        for(string channel_address : settings["channel_addresses"].split(","))
+        {
+            osc_addresses[i] = channel_address.strip();
+            i++;   
+        }
+    }
+
     return true;
 }
 
 //Set a hardware channel output. Value is 0.0 to 1.0 for no to max output.
 void OSCDevice::setChannelData(int channel, float value)
 {
-    // Set channel data here
+    uint8_t buffer[maximum_udp_packet_size] = {};
+    OSCPP::Client::Packet packet(buffer, maximum_udp_packet_size);
+    const char* osc_address = osc_addresses[channel].c_str();
+    packet.openMessage(osc_address, 1).float32(value).closeMessage();
+    socket.send(buffer, packet.size(), address, port_number);
 }
 
 //Return the number of output channels supported by this device.
 int OSCDevice::getChannelCount()
 {
-    // Return the number of channels
-    return 1;
-}
-
-void OSCDevice::updateLoop()
-{
-    while(run_thread)
-    {
-        // Send updates
-    }
-}
-
-
-size_t makePacket(void* buffer, size_t size)
-{
-    // Construct a packet
-    OSCPP::Client::Packet packet(buffer, size);
-    packet
-        // Open a bundle with a timetag
-        .openBundle(1234ULL)
-            // Add a message with two arguments and an array with 6 elements;
-            // for efficiency this needs to be known in advance.
-            .openMessage("/s_new", 2 + OSCPP::Tags::array(6))
-                // Write the arguments
-                .string("sinesweep")
-                .int32(2)
-                .openArray()
-                    .string("start-freq")
-                    .float32(330.0f)
-                    .string("end-freq")
-                    .float32(990.0f)
-                    .string("amp")
-                    .float32(0.4f)
-                .closeArray()
-            // Every `open` needs a corresponding `close`
-            .closeMessage()
-            // Add another message with one argument
-            .openMessage("/n_free", 1)
-                .int32(1)
-            .closeMessage()
-            // And nother one
-            .openMessage("/n_set", 3)
-                .int32(1)
-                .string("wobble")
-                // Numeric arguments are converted automatically
-                // (see below)
-                .int32(31)
-            .closeMessage()
-        .closeBundle();
-    return packet.size();
+    return channel_count;
 }

@@ -2,6 +2,7 @@
 #define OSC_DEVICE_H
 
 #include <io/network/udpSocket.h>
+#include <io/network/address.h>
 #include "hardware/hardwareOutputDevice.h"
 
 #include <stdint.h>
@@ -10,22 +11,24 @@
 class OSCDevice : public HardwareOutputDevice
 {
 private:
-    std::thread update_thread;
-    sp::io::network::UdpSocket socket;
+    static constexpr int maximum_udp_packet_size = 65507;
 
-    bool run_thread;
+    sp::io::network::UdpSocket socket;
+    
+    int channel_count;
+    sp::io::network::Address address;
+    int port_number;
+    string osc_addresses[512];
+    
 public:
     OSCDevice();
-    virtual ~OSCDevice();
-
+    
     virtual bool configure(std::unordered_map<string, string> settings) override;
 
     virtual void setChannelData(int channel, float value) override;
 
     virtual int getChannelCount() override;
 
-private:
-    void updateLoop();
 };
 
 #endif//OSC_DEVICE_H
