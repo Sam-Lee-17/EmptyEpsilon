@@ -138,7 +138,7 @@ void HardwareController::handleConfig(string section, std::unordered_map<string,
     }else if(section == "[state]")
     {
         int ship_number = 0;
-        if (channel_mapping.find(settings["ship_number"]) != channel_mapping.end())
+        if (settings.find("ship_number") != settings.end())
         {
             ship_number = settings["ship_number"].strip().toInt();
         }
@@ -161,7 +161,7 @@ void HardwareController::handleConfig(string section, std::unordered_map<string,
     }else if(section == "[event]")
     {
         int ship_number = 0;
-        if (channel_mapping.find(settings["ship_number"]) != channel_mapping.end())
+        if (settings.find("ship_number") != settings.end())
         {
             ship_number = settings["ship_number"].strip().toInt();
         }
